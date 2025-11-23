@@ -28,6 +28,9 @@ const userSchema = new mongoose.Schema({
     sparse: true,
     unique: true
   },
+  telegramChatId: {
+    type: String
+  },
   groupNumber: {
     type: String
   },
@@ -59,7 +62,7 @@ const userSchema = new mongoose.Schema({
     },
     newSessions: {
       type: Boolean,
-      default: false
+      default: true
     }
   },
   isActive: {

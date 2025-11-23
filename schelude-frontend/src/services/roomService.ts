@@ -2,7 +2,7 @@ import api from '../config/api';
 import { Room } from '../types';
 
 export const roomService = {
-  getAll: async (params?: { building?: string; type?: string; isActive?: boolean }): Promise<{ success: boolean; rooms: Room[] }> => {
+  getAll: async (params?: any): Promise<{ success: boolean; rooms: Room[] }> => {
     const response = await api.get('/rooms', { params });
     return response.data;
   },
@@ -24,6 +24,21 @@ export const roomService = {
 
   delete: async (id: string): Promise<{ success: boolean; message: string }> => {
     const response = await api.delete(`/rooms/${id}`);
+    return response.data;
+  },
+
+  findAvailableRooms: async (
+    date: string,
+    startTime: string,
+    endTime: string,
+    capacity?: number,
+    equipment?: string[]
+  ): Promise<{ success: boolean; rooms: Room[]; total: number }> => {
+    const params: any = { date, startTime, endTime };
+    if (capacity) params.capacity = capacity;
+    if (equipment && equipment.length > 0) params.equipment = equipment;
+    
+    const response = await api.get('/rooms/available', { params });
     return response.data;
   },
 };

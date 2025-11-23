@@ -4,8 +4,9 @@ const router = express.Router();
 const Session = require('../models/Session');
 const Course = require('../models/Course');
 const conflictService = require('../services/conflictService');
-const notificationService = require('../services/notificationService');
+const { notifyScheduleChange } = require('../services/notificationService');
 const { protect, authorize } = require('../middleware/auth');
+const { pairToDateTime, getPairTime, getAllPairs } = require('../utils/pairSchedule');
 
 // @route   GET /api/sessions
 // @desc    Get sessions with filters
@@ -81,19 +82,29 @@ router.get('/:id', protect, async (req, res) => {
   }
 });
 
+// @route   GET /api/sessions/pairs
+// @desc    Get all pair times
+// @access  Public
+router.get('/pairs', (req, res) => {
+  res.json({ success: true, pairs: getAllPairs() });
+});
+
 // @route   POST /api/sessions
 // @desc    Create new session
 // @access  Private/Admin
 router.post('/', protect, authorize('admin', 'superadmin'), [
   body('course').notEmpty().withMessage('Course is required'),
-  body('startAt').isISO8601().withMessage('Valid start date is required'),
-  body('endAt').isISO8601().withMessage('Valid end date is required'),
+  body('date').isISO8601().withMessage('Valid date is required'),
+  body('pairNumber').isInt({ min: 1, max: 8 }).withMessage('Pair number must be between 1 and 8'),
   body('room').notEmpty().withMessage('Room is required'),
   body('teacher').notEmpty().withMessage('Teacher is required'),
   body('groups').isArray({ min: 1 }).withMessage('At least one group is required')
 ], async (req, res) => {
   try {
-    const { course, startAt, endAt, room, teacher, groups, type, notes } = req.body;
+    const { course, date, pairNumber, room, teacher, groups, type, notes } = req.body;
+    
+    // Convert pair number to actual times
+    const { startAt, endAt } = pairToDateTime(new Date(date), pairNumber);
 
     // Validate time constraints
     const timeValidation = conflictService.validateTimeConstraints(startAt, endAt);
@@ -129,6 +140,7 @@ router.post('/', protect, authorize('admin', 'superadmin'), [
     // Create session
     const session = await Session.create({
       course,
+      pairNumber,
       startAt,
       endAt,
       room,
@@ -150,12 +162,7 @@ router.post('/', protect, authorize('admin', 'superadmin'), [
 
     // Send notifications
     try {
-      await notificationService.notifySessionChange(
-        session, 
-        'session_created', 
-        {}, 
-        notes
-      );
+      await notifyScheduleChange('session_created', session);
     } catch (notifError) {
       console.error('Notification error:', notifError);
       // Don't fail the request if notification fails
@@ -266,12 +273,7 @@ router.put('/:id', protect, authorize('admin', 'superadmin'), async (req, res) =
 
     // Send notifications
     try {
-      await notificationService.notifySessionChange(
-        updatedSession, 
-        changeType, 
-        changes, 
-        notes
-      );
+      await notifyScheduleChange(changeType, updatedSession, changes);
     } catch (notifError) {
       console.error('Notification error:', notifError);
     }
@@ -329,12 +331,7 @@ router.patch('/:id/status', protect, authorize('admin', 'superadmin'), [
     // Send notifications
     try {
       const changeType = status === 'cancelled' ? 'session_cancelled' : 'status_changed';
-      await notificationService.notifySessionChange(
-        session,
-        changeType,
-        { oldStatus, newStatus: status },
-        comment
-      );
+      await notifyScheduleChange(changeType, session, { oldStatus, newStatus: status });
     } catch (notifError) {
       console.error('Notification error:', notifError);
     }
@@ -350,7 +347,8 @@ router.patch('/:id/status', protect, authorize('admin', 'superadmin'), [
 // @access  Private/Admin
 router.delete('/:id', protect, authorize('admin', 'superadmin'), async (req, res) => {
   try {
-    const session = await Session.findById(req.params.id);
+    const session = await Session.findById(req.params.id)
+      .populate('course teacher room');
 
     if (!session) {
       return res.status(404).json({ message: 'Session not found' });
@@ -362,10 +360,19 @@ router.delete('/:id', protect, authorize('admin', 'superadmin'), async (req, res
       return res.status(403).json({ message: editCheck.reason });
     }
 
+    // Send cancellation notifications before deletion
+    try {
+      await notifyScheduleChange('session_cancelled', session);
+    } catch (notifError) {
+      console.error('Notification error (non-critical):', notifError.message);
+      // Continue with deletion even if notification fails
+    }
+
     await Session.findByIdAndDelete(req.params.id);
 
     res.json({ success: true, message: 'Session deleted successfully' });
   } catch (error) {
+    console.error('Delete session error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

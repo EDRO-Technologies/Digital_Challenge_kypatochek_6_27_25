@@ -32,10 +32,15 @@ import {
   Logout,
   Brightness4,
   Brightness7,
+  Person,
+  Groups,
+  PersonAdd,
+  SmartToy,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useThemeStore } from '../stores/themeStore';
+import NotificationBell from './NotificationBell';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -75,13 +80,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const menuItems = [
     { text: 'Главная', icon: <Home />, path: '/', roles: ['guest', 'student', 'teacher', 'admin', 'superadmin'] },
     { text: 'Расписание', icon: <CalendarMonth />, path: '/schedule', roles: ['guest', 'student', 'teacher', 'admin', 'superadmin'] },
+    { text: 'Расписание студентов', icon: <Groups />, path: '/schedule/student', roles: ['guest', 'student', 'teacher', 'admin', 'superadmin'] },
+    { text: 'Расписание преподавателей', icon: <Person />, path: '/schedule/teacher', roles: ['guest', 'student', 'teacher', 'admin', 'superadmin'] },
+    { text: 'Свободные аудитории', icon: <MeetingRoom />, path: '/rooms/available', roles: ['guest', 'student', 'teacher', 'admin', 'superadmin'] },
+    { text: 'Алерты', icon: <Notifications />, path: '/alerts', roles: ['guest', 'student', 'teacher', 'admin', 'superadmin'] },
     { divider: true },
     { text: 'Панель управления', icon: <Dashboard />, path: '/admin', roles: ['admin', 'superadmin'] },
     { text: 'Занятия', icon: <EventNote />, path: '/admin/sessions', roles: ['admin', 'superadmin'] },
     { text: 'Курсы', icon: <School />, path: '/admin/courses', roles: ['admin', 'superadmin'] },
     { text: 'Аудитории', icon: <MeetingRoom />, path: '/admin/rooms', roles: ['admin', 'superadmin'] },
     { text: 'Пользователи', icon: <People />, path: '/admin/users', roles: ['admin', 'superadmin'] },
+    { text: 'Преподаватели', icon: <PersonAdd />, path: '/admin/teachers', roles: ['admin', 'superadmin'] },
     { text: 'Уведомления', icon: <Notifications />, path: '/admin/notifications', roles: ['admin', 'superadmin'] },
+    { text: 'AI Ассистент', icon: <SmartToy />, path: '/admin/ai', roles: ['admin', 'superadmin'] },
   ];
 
   const drawer = (
@@ -97,7 +108,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           item.divider ? (
             <Divider key={`divider-${index}`} sx={{ my: 1 }} />
           ) : (
-            user && item.roles?.includes(user.role) && (
+            item.roles?.includes(user?.role || 'guest') && (
               <ListItem key={item.text} disablePadding>
                 <ListItemButton
                   selected={location.pathname === item.path}
@@ -124,6 +135,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         sx={{
           width: { md: `calc(100% - ${drawerWidth}px)` },
           ml: { md: `${drawerWidth}px` },
+          bgcolor: theme.palette.mode === 'light' ? 'white' : undefined,
+          color: theme.palette.mode === 'light' ? '#4f4f4f' : undefined,
         }}
       >
         <Toolbar>
@@ -141,6 +154,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <IconButton color="inherit" onClick={toggleTheme}>
             {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
           </IconButton>
+          {user && <NotificationBell />}
           {user && (
             <IconButton color="inherit" onClick={handleProfileMenuOpen}>
               <Avatar sx={{ width: 32, height: 32 }}>{user.name[0]}</Avatar>

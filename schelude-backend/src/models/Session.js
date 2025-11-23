@@ -11,7 +11,7 @@ const sessionHistorySchema = new mongoose.Schema({
   },
   changeType: {
     type: String,
-    enum: ['created', 'updated', 'moved', 'cancelled', 'restored', 'confirmed']
+    enum: ['created', 'updated', 'moved', 'cancelled', 'restored', 'confirmed', 'session_cancelled', 'status_changed', 'room_changed', 'teacher_changed', 'time_changed', 'session_moved']
   },
   changes: {
     type: mongoose.Schema.Types.Mixed
@@ -26,6 +26,12 @@ const sessionSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Course',
     required: true
+  },
+  pairNumber: {
+    type: Number,
+    min: 1,
+    max: 8,
+    index: true
   },
   startAt: {
     type: Date,
@@ -52,6 +58,30 @@ const sessionSchema = new mongoose.Schema({
     required: true,
     index: true
   }],
+  subgroup: {
+    type: String,
+    enum: ['all', 'subgroup-1', 'subgroup-2'],
+    default: 'all',
+    index: true
+  },
+  cycleType: {
+    type: String,
+    enum: ['regular', 'cyclic'],
+    default: 'regular',
+    index: true
+  },
+  cycleStartDate: {
+    type: Date,
+    index: true
+  },
+  cycleEndDate: {
+    type: Date,
+    index: true
+  },
+  cycleName: {
+    type: String,
+    index: true
+  },
   type: {
     type: String,
     enum: ['lecture', 'practice', 'lab', 'seminar', 'exam', 'consultation'],

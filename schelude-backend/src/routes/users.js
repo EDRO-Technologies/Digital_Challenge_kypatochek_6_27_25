@@ -146,4 +146,21 @@ router.patch('/:id', protect, authorize('admin', 'superadmin'), async (req, res)
   }
 });
 
+// @route   DELETE /api/users/:id
+// @desc    Delete user (admin only)
+// @access  Private/Admin
+router.delete('/:id', protect, authorize('admin', 'superadmin'), async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ success: true, message: 'User deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 module.exports = router;

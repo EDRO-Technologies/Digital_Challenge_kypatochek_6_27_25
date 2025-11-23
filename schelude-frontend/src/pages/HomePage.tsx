@@ -52,20 +52,21 @@ const HomePage: React.FC = () => {
   ];
 
   return (
-    <Box>
+    <Box >
       {/* Hero Section */}
       <Box
         sx={{
           background: (theme) =>
             theme.palette.mode === 'dark'
               ? 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)'
-              : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              : 'linear-gradient(135deg, #1e3c72  0%, #2a5298 100%)',
+          borderRadius: 1,
           color: 'white',
           py: 12,
           mb: 8,
         }}
       >
-        <Container maxWidth="lg">
+        <Container maxWidth="lg" >
           <MotionBox
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -119,7 +120,7 @@ const HomePage: React.FC = () => {
                   onClick={() => navigate('/schedule')}
                   sx={{
                     bgcolor: 'white',
-                    color: 'primary.main',
+                    color: 'black',
                     '&:hover': { bgcolor: 'grey.100' },
                     px: 4,
                     py: 1.5,
@@ -175,7 +176,7 @@ const HomePage: React.FC = () => {
       </Container>
 
       {/* CTA Section */}
-      <Box sx={{ bgcolor: 'background.paper', py: 8 }}>
+      <Box sx={{ bgcolor: 'transparent', py: 8 }}>
         <Container maxWidth="md">
           <Paper elevation={3} sx={{ p: 6, textAlign: 'center', borderRadius: 2 }}>
             <Typography variant="h4" gutterBottom fontWeight="bold">

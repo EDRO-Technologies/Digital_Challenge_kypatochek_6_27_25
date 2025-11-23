@@ -71,14 +71,23 @@ export interface SessionHistory {
   comment?: string;
 }
 
+export type WeekParity = 'both' | 'odd' | 'even';
+
 export interface Session {
   _id: string;
   course: string | Course;
+  pairNumber?: number;
   startAt: string;
   endAt: string;
   room: string | Room;
   teacher: string | User;
   groups: string[];
+  subgroup?: 'all' | 'subgroup-1' | 'subgroup-2';
+  weekParity?: WeekParity;
+  cycleType?: 'regular' | 'cyclic';
+  cycleStartDate?: string;
+  cycleEndDate?: string;
+  cycleName?: string;
   type: SessionType;
   status: SessionStatus;
   notes?: string;
@@ -154,4 +163,4 @@ export interface ScheduleResponse {
   schedule?: Record<string, Session[]>;
   weekStart?: string;
   weekEnd?: string;
-}
+}

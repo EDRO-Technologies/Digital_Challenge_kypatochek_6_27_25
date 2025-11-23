@@ -42,4 +42,23 @@ const authorize = (...roles) => {
   };
 };
 
-module.exports = { protect, authorize };
+// Webhook authentication middleware
+const webhookAuth = (req, res, next) => {
+  try {
+    const apiKey = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '');
+
+    if (!apiKey) {
+      return res.status(401).json({ message: 'No API key provided' });
+    }
+
+    if (apiKey !== process.env.WEBHOOK_API_KEY) {
+      return res.status(401).json({ message: 'Invalid API key' });
+    }
+
+    next();
+  } catch (error) {
+    res.status(401).json({ message: 'Webhook authentication failed' });
+  }
+};
+
+module.exports = { protect, authorize, webhookAuth };

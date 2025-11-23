@@ -30,6 +30,66 @@ router.get('/', protect, async (req, res) => {
   }
 });
 
+// @route   GET /api/rooms/available
+// @desc    Get available rooms for specific time
+// @access  Public
+router.get('/available', async (req, res) => {
+  try {
+    const { date, startTime, endTime, capacity, equipment } = req.query;
+
+    if (!date || !startTime || !endTime) {
+      return res.status(400).json({ message: 'date, startTime, and endTime are required' });
+    }
+
+    // Parse date and times
+    const queryDate = new Date(date);
+    const [startHour, startMin] = startTime.split(':');
+    const [endHour, endMin] = endTime.split(':');
+    
+    const startDateTime = new Date(queryDate);
+    startDateTime.setHours(parseInt(startHour), parseInt(startMin), 0, 0);
+    
+    const endDateTime = new Date(queryDate);
+    endDateTime.setHours(parseInt(endHour), parseInt(endMin), 0, 0);
+
+    // Build room query
+    const roomQuery = { isActive: true };
+    if (capacity) {
+      roomQuery.capacity = { $gte: parseInt(capacity) };
+    }
+    if (equipment) {
+      const equipmentArray = Array.isArray(equipment) ? equipment : [equipment];
+      roomQuery.equipment = { $all: equipmentArray };
+    }
+
+    // Get all rooms matching criteria
+    const allRooms = await Room.find(roomQuery);
+
+    // Find occupied rooms in the time range
+    const Session = require('../models/Session');
+    const occupiedSessions = await Session.find({
+      status: { $ne: 'cancelled' },
+      $or: [
+        {
+          startAt: { $lt: endDateTime },
+          endAt: { $gt: startDateTime }
+        }
+      ]
+    }).select('room');
+
+    const occupiedRoomIds = occupiedSessions.map(s => s.room.toString());
+
+    // Filter out occupied rooms
+    const availableRooms = allRooms.filter(
+      room => !occupiedRoomIds.includes(room._id.toString())
+    );
+
+    res.json({ success: true, rooms: availableRooms, total: availableRooms.length });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // @route   GET /api/rooms/:id
 // @desc    Get room by ID
 // @access  Private

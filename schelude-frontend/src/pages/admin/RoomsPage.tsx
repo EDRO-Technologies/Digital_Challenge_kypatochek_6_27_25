@@ -35,6 +35,7 @@ const roomSchema = yup.object({
 
 const RoomsPage: React.FC = () => {
   const [open, setOpen] = useState(false);
+  const [editingRoom, setEditingRoom] = useState<any>(null);
   const [error, setError] = useState('');
   const queryClient = useQueryClient();
 
@@ -47,11 +48,21 @@ const RoomsPage: React.FC = () => {
     mutationFn: roomService.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
-      setOpen(false);
-      formik.resetForm();
+      handleClose();
     },
     onError: (err: any) => {
       setError(err.response?.data?.message || 'Ошибка создания аудитории');
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => roomService.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      handleClose();
+    },
+    onError: (err: any) => {
+      setError(err.response?.data?.message || 'Ошибка обновления аудитории');
     },
   });
 
@@ -61,6 +72,26 @@ const RoomsPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
     },
   });
+
+  const handleClose = () => {
+    setOpen(false);
+    setEditingRoom(null);
+    setError('');
+    formik.resetForm();
+  };
+
+  const handleEdit = (room: any) => {
+    setEditingRoom(room);
+    formik.setValues({
+      number: room.number,
+      building: room.building,
+      capacity: room.capacity,
+      floor: room.floor || 1,
+      type: room.type,
+      notes: room.notes || '',
+    });
+    setOpen(true);
+  };
 
   const formik = useFormik({
     initialValues: {
@@ -73,7 +104,11 @@ const RoomsPage: React.FC = () => {
     },
     validationSchema: roomSchema,
     onSubmit: (values) => {
-      createMutation.mutate(values);
+      if (editingRoom) {
+        updateMutation.mutate({ id: editingRoom._id, data: values });
+      } else {
+        createMutation.mutate(values);
+      }
     },
   });
 
@@ -139,7 +174,11 @@ const RoomsPage: React.FC = () => {
                   </Stack>
                 </CardContent>
                 <CardActions>
-                  <Button size="small" startIcon={<Edit />}>
+                  <Button 
+                    size="small" 
+                    startIcon={<Edit />}
+                    onClick={() => handleEdit(room)}
+                  >
                     Редактировать
                   </Button>
                   <Button
@@ -157,8 +196,8 @@ const RoomsPage: React.FC = () => {
         </Grid>
       )}
 
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Добавить новую аудиторию</DialogTitle>
+      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+        <DialogTitle>{editingRoom ? 'Редактировать аудиторию' : 'Добавить новую аудиторию'}</DialogTitle>
         <form onSubmit={formik.handleSubmit}>
           <DialogContent>
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -239,9 +278,11 @@ const RoomsPage: React.FC = () => {
             </Grid>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setOpen(false)}>Отмена</Button>
-            <Button type="submit" variant="contained" disabled={createMutation.isPending}>
-              {createMutation.isPending ? 'Создание...' : 'Создать'}
+            <Button onClick={handleClose}>Отмена</Button>
+            <Button type="submit" variant="contained" disabled={createMutation.isPending || updateMutation.isPending}>
+              {editingRoom
+                ? (updateMutation.isPending ? 'Сохранение...' : 'Сохранить')
+                : (createMutation.isPending ? 'Создание...' : 'Создать')}
             </Button>
           </DialogActions>
         </form>

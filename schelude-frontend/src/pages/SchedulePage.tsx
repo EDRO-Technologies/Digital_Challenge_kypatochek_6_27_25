@@ -11,6 +11,7 @@ import {
   Alert,
   CircularProgress,
   Paper,
+  Autocomplete,
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { Search } from '@mui/icons-material';
@@ -26,6 +27,11 @@ const SchedulePage: React.FC = () => {
   const { user } = useAuthStore();
 
   const effectiveGroup = searchGroup || user?.groupNumber || '';
+
+  const { data: groupsData } = useQuery({
+    queryKey: ['groups'],
+    queryFn: () => scheduleService.getGroups(),
+  });
 
   const { data: todayData, isLoading: todayLoading, error: todayError } = useQuery({
     queryKey: ['schedule', 'today', effectiveGroup],
@@ -138,24 +144,26 @@ const SchedulePage: React.FC = () => {
 
       {!user?.groupNumber && (
         <Box sx={{ mb: 3 }}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField
-              fullWidth
-              label="Номер группы"
-              placeholder="Например: ИВТ-101"
-              value={groupNumber}
-              onChange={(e) => setGroupNumber(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-            />
-            <Button
-              variant="contained"
-              startIcon={<Search />}
-              onClick={handleSearch}
-              sx={{ minWidth: 150 }}
-            >
-              Найти
-            </Button>
-          </Stack>
+          <Autocomplete
+            options={groupsData?.groups || []}
+            value={groupNumber || null}
+            onChange={(_, newValue) => {
+              setGroupNumber(newValue || '');
+              if (newValue) {
+                setSearchGroup(newValue);
+              }
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Выберите группу"
+                placeholder="Начните вводить номер группы..."
+              />
+            )}
+            freeSolo
+            onInputChange={(_, newValue) => setGroupNumber(newValue)}
+            noOptionsText="Группы не найдены"
+          />
         </Box>
       )}
 

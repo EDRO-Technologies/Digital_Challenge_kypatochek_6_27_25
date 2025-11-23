@@ -13,6 +13,28 @@
 - ✅ REST API с JWT авторизацией
 - ✅ Роли: guest, student, teacher, admin, superadmin
 
+## 🏗 Architecture
+
+Система состоит из трех основных компонентов:
+
+1. **Backend (Node.js/Express)** - REST API для управления данными
+2. **Frontend (React/Vite)** - Веб-интерфейс для администраторов
+3. **Telegram Bot (Python)** - Отдельный сервис для взаимодействия с пользователями в Telegram
+
+### Data Flow
+
+```
+Frontend ←→ Backend API ←→ MongoDB
+                ↓
+         (creates notification records)
+                ↓
+    Telegram Bot (polls for notifications)
+                ↓
+         Telegram Users
+```
+
+**Важно:** Backend НЕ взаимодействует напрямую с Telegram API. Все сообщения отправляет Python бот.
+
 ## 🛠 Tech Stack
 
 **Backend:**
@@ -23,8 +45,8 @@
 
 **Telegram Bot:**
 - Python 3.11+
-- Aiogram 3.x
-- FSM для управления состояниями
+- python-telegram-bot library
+- Асинхронная архитектура (async/await)
 
 ## 📋 Prerequisites
 
@@ -58,15 +80,17 @@ nano .env
 **Configure `.env`:**
 
 ```env
-PORT=3000
+PORT=5000
 NODE_ENV=development
 MONGODB_URI=mongodb://localhost:27017/schedule-db
-JWT_SECRET=your-super-secret-key-change-this
+JWT_SECRET=your-super-secret-key-change-this-min-32-chars
 JWT_EXPIRES_IN=7d
-TELEGRAM_BOT_TOKEN=your-bot-token
-TELEGRAM_WEBHOOK_URL=http://localhost:3000/api/webhooks/telegram
+ADMIN_PASSWORD=YourSecureP@ssw0rd123
+WEBHOOK_API_KEY=your-webhook-api-key-min-32-chars-random
 FRONTEND_URL=http://localhost:5173
 ```
+
+**Примечание:** TELEGRAM_BOT_TOKEN больше не требуется для backend! Он нужен только для Python бота.
 
 ### 3. Start MongoDB
 
@@ -127,7 +151,7 @@ npm run dev
 npm start
 ```
 
-Backend will run on `http://localhost:3000`
+Backend will run on `http://localhost:5000`
 
 ### 5. Telegram Bot Setup
 
@@ -150,7 +174,8 @@ nano .env
 
 ```env
 TELEGRAM_BOT_TOKEN=your_bot_token_from_botfather
-BACKEND_URL=http://localhost:3000/api
+BACKEND_URL=http://localhost:5000
+ADMIN_USER_IDS=123456789,987654321
 ```
 
 ### 6. Run Telegram Bot
@@ -168,7 +193,7 @@ See [API_DOCUMENTATION.md](./API_DOCUMENTATION.md) for complete API reference.
 **1. Register Admin User:**
 
 ```bash
-curl -X POST http://localhost:3000/api/auth/register \
+curl -X POST http://localhost:5000/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Admin User",
@@ -182,7 +207,7 @@ curl -X POST http://localhost:3000/api/auth/register \
 **2. Login:**
 
 ```bash
-curl -X POST http://localhost:3000/api/auth/login \
+curl -X POST http://localhost:5000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "admin@university.edu",
@@ -195,7 +220,7 @@ Save the token from response.
 **3. Create a Room:**
 
 ```bash
-curl -X POST http://localhost:3000/api/rooms \
+curl -X POST http://localhost:5000/api/rooms \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{
@@ -225,7 +250,7 @@ curl -X POST http://localhost:3000/api/rooms \
 │   │   └── errorHandler.js      # Error handling
 │   ├── services/
 │   │   ├── conflictService.js   # Conflict detection
-│   │   └── notificationService.js # Notifications
+│   │   └── notificationService.js # Notification creation
 │   ├── routes/
 │   │   ├── auth.js              # Auth routes
 │   │   ├── users.js             # User routes
@@ -234,15 +259,11 @@ curl -X POST http://localhost:3000/api/rooms \
 │   │   ├── sessions.js          # Session routes
 │   │   ├── registrations.js     # Registration routes
 │   │   ├── schedule.js          # Schedule routes
-│   │   ├── webhooks.js          # Webhook routes
+│   │   ├── webhooks.js          # Webhook routes (for bot integration)
 │   │   └── notifications.js     # Notification routes
 │   ├── utils/
 │   │   └── tokenUtils.js        # JWT utilities
 │   └── server.js                # Express app
-├── telegram_bot/
-│   ├── bot.py                   # Telegram bot (Aiogram)
-│   ├── requirements.txt         # Python dependencies
-│   └── .env.example             # Bot env template
 ├── .env.example
 ├── .gitignore
 ├── package.json
@@ -261,11 +282,10 @@ curl -X POST http://localhost:3000/api/rooms \
 ## 📱 Telegram Bot Commands
 
 - `/start` - Начать работу с ботом
-- **📅 Мои пары** - Расписание на сегодня
-- **🔜 Завтра** - Расписание на завтра
-- **📆 На неделю** - Расписание на неделю
-- **🔄 Сменить группу** - Изменить номер группы
-- **⚙️ Настройки** - Настройки уведомлений
+- **📅 Сегодня** - Расписание на сегодня
+- **📅 Завтра** - Расписание на завтра
+- **📆 Неделя** - Расписание на неделю
+- **👤 Профиль** - Просмотр профиля
 
 ## ⚡ Business Rules
 
@@ -300,32 +320,47 @@ curl -X POST http://localhost:3000/api/rooms \
 
 ## 🔔 Notifications
 
-### Trigger Events:
-- Занятие создано
-- Занятие перенесено
-- Занятие отменено
-- Изменена аудитория
-- Изменен преподаватель
-- Изменено время
+### Architecture
 
-### Notification Flow:
-1. Backend определяет затронутые группы
-2. Находит всех студентов этих групп
-3. Фильтрует по настройкам уведомлений
-4. Отправляет webhook боту
-5. Бот рассылает уведомления
+Система уведомлений работает по следующей схеме:
+
+1. **Backend создает записи уведомлений** в MongoDB при изменениях расписания
+2. **Python Telegram Bot** опрашивает backend для получения pending уведомлений
+3. **Bot отправляет сообщения** пользователям через Telegram API
+4. **Bot обновляет статус** уведомлений через webhook
+
+### Trigger Events:
+- Занятие создано (`session_created`)
+- Занятие перенесено (`session_moved`)
+- Занятие отменено (`session_cancelled`)
+- Изменена аудитория (`room_changed`)
+- Изменен преподаватель (`teacher_changed`)
+- Изменено время (`time_changed`)
+
+### Webhook Endpoints:
+
+**GET /api/webhooks/telegram/pending-notifications**
+- Получить список pending уведомлений для отправки
+- Требует API key в заголовке
+
+**POST /api/webhooks/telegram/notification-status**
+- Обновить статус уведомления (sent/delivered/failed)
+- Требует API key в заголовке
+
+**POST /api/webhooks/telegram/register**
+- Регистрация пользователя из Telegram
+- Публичный endpoint
 
 ## 🧪 Testing
 
 ```bash
 # Health check
-curl http://localhost:3000/health
+curl http://localhost:5000/health
 
 # Expected response:
 {
   "status": "ok",
-  "timestamp": "2024-01-15T10:00:00.000Z",
-  "uptime": 123.45
+  "timestamp": "2024-01-15T10:00:00.000Z"
 }
 ```
 
@@ -333,14 +368,16 @@ curl http://localhost:3000/health
 
 ### Production Checklist
 
-- [ ] Change `JWT_SECRET` to strong random string
+- [ ] Change `JWT_SECRET` to strong random string (min 32 chars)
+- [ ] Set strong `ADMIN_PASSWORD` (min 8 chars, mixed case + numbers)
+- [ ] Generate secure `WEBHOOK_API_KEY` (min 32 chars)
 - [ ] Set `NODE_ENV=production`
 - [ ] Use production MongoDB (MongoDB Atlas)
 - [ ] Configure CORS for your frontend domain
 - [ ] Set up HTTPS
-- [ ] Configure webhook URL for Telegram
 - [ ] Set up monitoring (PM2, logs)
 - [ ] Configure backup for MongoDB
+- [ ] Deploy Telegram bot on separate server/container
 
 ### Example with PM2
 
@@ -350,7 +387,7 @@ npm install -g pm2
 # Start backend
 pm2 start src/server.js --name schedule-backend
 
-# Start telegram bot
+# Start telegram bot (on same or different server)
 cd telegram_bot
 pm2 start bot.py --name schedule-bot --interpreter python3
 
@@ -359,6 +396,7 @@ pm2 monit
 
 # Logs
 pm2 logs schedule-backend
+pm2 logs schedule-bot
 ```
 
 ## 📝 License

@@ -27,8 +27,17 @@ const getTheme = (mode: 'light' | 'dark') => {
         main: mode === 'light' ? '#0288d1' : '#29b6f6',
       },
       background: {
-        default: mode === 'light' ? '#f5f5f5' : '#121212',
-        paper: mode === 'light' ? '#ffffff' : '#1e1e1e',
+        default: mode === 'light' ? '#f5f5f5' : '#0a0a0a',
+        paper: mode === 'light' ? '#ffffff' : '#1a1a1a',
+      },
+      text: {
+        primary: mode === 'light' ? 'rgba(0, 0, 0, 0.87)' : 'rgba(255, 255, 255, 0.95)',
+        secondary: mode === 'light' ? 'rgba(0, 0, 0, 0.6)' : 'rgba(255, 255, 255, 0.7)',
+      },
+      divider: mode === 'light' ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.12)',
+      action: {
+        hover: mode === 'light' ? 'rgba(0, 0, 0, 0.04)' : 'rgba(255, 255, 255, 0.08)',
+        selected: mode === 'light' ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.16)',
       },
     },
     typography: {
@@ -75,7 +84,32 @@ const getTheme = (mode: 'light' | 'dark') => {
           root: {
             boxShadow: mode === 'light' 
               ? '0 2px 8px rgba(0,0,0,0.1)' 
-              : '0 2px 8px rgba(0,0,0,0.3)',
+              : '0 2px 8px rgba(0,0,0,0.5)',
+            backgroundImage: mode === 'dark' ? 'none' : undefined,
+          },
+        },
+      },
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            backgroundImage: mode === 'dark' ? 'none' : undefined,
+          },
+        },
+      },
+      MuiTableCell: {
+        styleOverrides: {
+          root: {
+            borderColor: mode === 'light' ? 'rgba(224, 224, 224, 1)' : 'rgba(81, 81, 81, 1)',
+          },
+          head: {
+            fontWeight: 600,
+          },
+        },
+      },
+      MuiDialog: {
+        styleOverrides: {
+          paper: {
+            backgroundImage: mode === 'dark' ? 'none' : undefined,
           },
         },
       },

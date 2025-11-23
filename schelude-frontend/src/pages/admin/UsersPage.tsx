@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Container,
   Typography,
@@ -13,17 +13,45 @@ import {
   Chip,
   IconButton,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  MenuItem,
+  Grid,
+  Alert,
 } from '@mui/material';
 import { Edit, Delete } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userService } from '../../services/userService';
+import { User } from '../../types';
 
 const UsersPage: React.FC = () => {
   const queryClient = useQueryClient();
+  const [openDialog, setOpenDialog] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    role: 'guest',
+    groupNumber: '',
+    isActive: true,
+  });
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: () => userService.getAll(),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<User> }) =>
+      userService.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      handleCloseDialog();
+    },
   });
 
   const deleteMutation = useMutation({
@@ -32,6 +60,38 @@ const UsersPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
   });
+
+  const handleOpenDialog = (user: User) => {
+    setEditingUser(user);
+    setFormData({
+      name: user.name,
+      email: user.email || '',
+      role: user.role,
+      groupNumber: user.groupNumber || '',
+      isActive: user.isActive ?? true,
+    });
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setEditingUser(null);
+  };
+
+  const handleSubmit = () => {
+    if (!editingUser) return;
+    
+    updateMutation.mutate({
+      id: editingUser._id,
+      data: formData,
+    });
+  };
+
+  const handleDelete = (id: string) => {
+    if (window.confirm('Вы уверены что хотите удалить этого пользователя?')) {
+      deleteMutation.mutate(id);
+    }
+  };
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -92,13 +152,13 @@ const UsersPage: React.FC = () => {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <IconButton size="small">
+                    <IconButton size="small" onClick={() => handleOpenDialog(user)}>
                       <Edit fontSize="small" />
                     </IconButton>
                     <IconButton
                       size="small"
                       color="error"
-                      onClick={() => deleteMutation.mutate(user._id)}
+                      onClick={() => handleDelete(user._id)}
                     >
                       <Delete fontSize="small" />
                     </IconButton>
@@ -109,6 +169,80 @@ const UsersPage: React.FC = () => {
           </Table>
         </TableContainer>
       )}
+
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Редактировать пользователя</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Имя"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                select
+                label="Роль"
+                value={formData.role}
+                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+              >
+                <MenuItem value="guest">Гость</MenuItem>
+                <MenuItem value="student">Студент</MenuItem>
+                <MenuItem value="teacher">Преподаватель</MenuItem>
+                <MenuItem value="admin">Админ</MenuItem>
+                <MenuItem value="superadmin">Супер-админ</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Группа"
+                value={formData.groupNumber}
+                onChange={(e) => setFormData({ ...formData, groupNumber: e.target.value })}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                select
+                label="Статус"
+                value={formData.isActive}
+                onChange={(e) => setFormData({ ...formData, isActive: e.target.value === 'true' })}
+              >
+                <MenuItem value="true">Активен</MenuItem>
+                <MenuItem value="false">Неактивен</MenuItem>
+              </TextField>
+            </Grid>
+          </Grid>
+          {updateMutation.error && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {updateMutation.error?.message}
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>Отмена</Button>
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            disabled={updateMutation.isPending}
+          >
+            Сохранить
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

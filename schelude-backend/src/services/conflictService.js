@@ -94,14 +94,8 @@ class ConflictService {
   validateTimeConstraints(startAt, endAt) {
     const start = new Date(startAt);
     const end = new Date(endAt);
-    const now = new Date();
 
     const errors = [];
-
-    // Check if start is in the past
-    if (start < now) {
-      errors.push('Session start time cannot be in the past');
-    }
 
     // Check if end is after start
     if (end <= start) {

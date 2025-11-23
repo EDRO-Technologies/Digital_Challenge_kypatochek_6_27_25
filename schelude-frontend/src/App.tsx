@@ -11,12 +11,19 @@ import ProtectedRoute from './components/ProtectedRoute';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import SchedulePage from './pages/SchedulePage';
+import StudentSchedulePage from './pages/StudentSchedulePage';
+import TeacherSchedulePage from './pages/TeacherSchedulePage';
+import FindRoomsPage from './pages/FindRoomsPage';
 import DashboardPage from './pages/admin/DashboardPage';
 import SessionsPage from './pages/admin/SessionsPage';
 import CoursesPage from './pages/admin/CoursesPage';
 import RoomsPage from './pages/admin/RoomsPage';
 import UsersPage from './pages/admin/UsersPage';
 import NotificationsPage from './pages/admin/NotificationsPage';
+import TeachersManagementPage from './pages/admin/TeachersManagementPage';
+import TeacherScheduleEditor from './pages/admin/TeacherScheduleEditor';
+import AIAssistantPage from './pages/admin/AIAssistantPage';
+import AlertsPage from './pages/AlertsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,6 +57,26 @@ const App: React.FC = () => {
             <Route path="/schedule" element={
               <Layout>
                 <SchedulePage />
+              </Layout>
+            } />
+            <Route path="/schedule/student" element={
+              <Layout>
+                <StudentSchedulePage />
+              </Layout>
+            } />
+            <Route path="/schedule/teacher" element={
+              <Layout>
+                <TeacherSchedulePage />
+              </Layout>
+            } />
+            <Route path="/rooms/available" element={
+              <Layout>
+                <FindRoomsPage />
+              </Layout>
+            } />
+            <Route path="/alerts" element={
+              <Layout>
+                <AlertsPage />
               </Layout>
             } />
             <Route path="/admin" element={
@@ -91,6 +118,27 @@ const App: React.FC = () => {
               <ProtectedRoute roles={['admin', 'superadmin']}>
                 <Layout>
                   <NotificationsPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/teachers" element={
+              <ProtectedRoute roles={['admin', 'superadmin']}>
+                <Layout>
+                  <TeachersManagementPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/teachers/:teacherId/schedule" element={
+              <ProtectedRoute roles={['admin', 'superadmin']}>
+                <Layout>
+                  <TeacherScheduleEditor />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/ai" element={
+              <ProtectedRoute roles={['admin', 'superadmin']}>
+                <Layout>
+                  <AIAssistantPage />
                 </Layout>
               </ProtectedRoute>
             } />
